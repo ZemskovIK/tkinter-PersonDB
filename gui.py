@@ -1,13 +1,12 @@
 from tkinter import *
 from tkinter import messagebox, simpledialog, filedialog
-import base64, dialogs, settings, database, sqlite3
+import dialogs, settings, database, sqlite3
 
 user_label = None
 current_username = None
 photo_label = None
 bio_text = None
 listbox = None
-photo_cache = None
 persons = []
 
 def get_current_username():
@@ -46,6 +45,7 @@ def find_person():
 def add_person(root, event=None):
     name = simpledialog.askstring("Добавить", "Введите имя:", parent=root)
     if not name:
+        get_listbox().focus_set()
         return 
     bio = simpledialog.askstring("Добавить", "Введите биографию:", parent=root)
     bio = bio if bio else ""
@@ -75,6 +75,7 @@ def delete_person(event=None):
     sel = listbox.curselection()
     if not sel:
         messagebox.showwarning("Ошибка", "Выберите запись для удаления")
+        get_listbox().focus_set()
         return
     index = sel[0]
     person = persons[index]
@@ -89,12 +90,14 @@ def edit_person(root, event=None):
     sel = listbox.curselection()
     if not sel:
         messagebox.showwarning("Ошибка", "Выберите запись для изменения")
+        get_listbox().focus_set()
         return
     index = sel[0]
     person = persons[index]
     
     new_name = simpledialog.askstring("Изменить", "Введите новое имя:", initialvalue=person[1], parent=root)
     if new_name is None:
+        get_listbox().focus_set()
         return
     
     new_bio = simpledialog.askstring("Изменить", "Введите новую биографию:", initialvalue=person[2], parent=root)
@@ -118,12 +121,11 @@ def edit_person(root, event=None):
     get_listbox().focus_set()
 
 def create_gui(root, username):
-    global photo_label, bio_text, listbox, photo_cache
-    global user_label, current_username, persons, default_photo
+    global photo_label, bio_text, listbox
+    global user_label, current_username, persons
     
     current_username = username
-    default_photo = PhotoImage(file="./images/noimage.png")
-    default_photo = default_photo.subsample(2)
+    default_photo = PhotoImage(file="./images/noimage.png").subsample(2)
     
     statusbar = Frame(root, bd=1, relief=SUNKEN)
     statusbar.pack(side=BOTTOM, fill=X)
@@ -134,9 +136,6 @@ def create_gui(root, username):
     info_label = Label(statusbar, 
                        text= "F1-справка F2-добавить F3-удалить F4-изменить F10-меню")
     info_label.pack(side=LEFT, padx=10)
-    
-    photo_cache = {}
-    photo_cache = {'default': default_photo}
 
     main_menu = Menu(root)
     fond_menu = Menu(main_menu, tearoff=0)
@@ -163,6 +162,8 @@ def create_gui(root, username):
 
     photo_label = Label(root, width=600, bg="grey")
     photo_label.pack(side=LEFT, fill=Y, padx=5, pady=5)
+    photo_label.default_image = default_photo
+
 
     bio_text = Text(root, wrap=WORD, width=50)
     bio_text.pack(side=LEFT, fill=BOTH, expand=True, padx=[0, 5], pady=5)
@@ -181,20 +182,20 @@ def create_gui(root, username):
         sel = listbox.curselection()
         if not sel:
             return
-        index = sel[0]
-        person = persons[index]
-        pid, name, bio, blob = person
-
+        person = persons[sel[0]]
+        
         bio_text.delete(1.0, END)
-        bio_text.insert(END, clean_bio(bio))
+        bio_text.insert(END, clean_bio(person[2]))
 
-        if blob:
-            encoded = base64.b64encode(blob)
-            img = PhotoImage(data=encoded)
-            photo_cache[pid] = img.subsample(2)
-            photo_label.config(image=photo_cache[pid], text="")
+        if person[3]:
+            try:
+                photo_label.image = PhotoImage(data=person[3]).subsample(2)
+                photo_label.config(image=photo_label.image)
+            except Exception as e:
+                print(f"Ошибка загрузки изображения: {e}")
+                photo_label.config(image=photo_label.default_image)
         else:
-            photo_label.config(image=photo_cache['default'])
+            photo_label.config(image=photo_label.default_image)
 
     listbox.bind("<<ListboxSelect>>", on_select)
     root.bind("<F10>", open_menu)

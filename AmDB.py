@@ -1,30 +1,30 @@
-from tkinter import *
 from tkinter import Tk, messagebox
 import settings, database, data, gui, dialogs
 
 def on_close(event=None):
     global username
     username = gui.get_current_username()
-    settings.save_settings(root.winfo_x(), root.winfo_y(), 
-                  root.winfo_width(), root.winfo_height(),
-                  username)
+    settings.save_settings(username, root.winfo_x(),
+                root.winfo_y(), root.winfo_width(), 
+                root.winfo_height()
+                )
     root.destroy()
     
 database.create_database()
 data.load_initial_data()
 
 config = settings.load_settings()
+username = config.get('main', 'username', fallback='Гость')
 width = config.getint('main', 'width')
 height = config.getint('main', 'height')
 x = config.getint('main', 'left')
 y = config.getint('main', 'top')
-username = config.get('main', 'username', fallback='Гость')
 
 if not username or username == "Гость":
     username = settings.get_username()
     if not username:
         username = "Гость"
-    settings.save_settings(x, y, width, height, username)
+    settings.save_settings(username, x, y, width, height)
     
 root = Tk()
 root.title("Известные исторические личности России")

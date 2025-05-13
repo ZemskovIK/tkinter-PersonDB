@@ -7,16 +7,15 @@ def load_settings():
         config.read_file(file)
     return config
 
-def save_settings(x=None, y=None, width=None, height=None, username=None):
+def save_settings(username, x=None, y=None, width=None, height=None):
     config = configparser.ConfigParser()
     config['main'] = {
-        'top': str(y),
-        'left': str(x),
-        'width': str(width),
-        'height': str(height)
+    'username': username or 'Гость',
+    'top': str(y),
+    'left': str(x),
+    'width': str(width),
+    'height': str(height)
     }
-    if username:
-        config['main']['username'] = username or 'Гость'
     with open('AmDB.ini', 'w', encoding="utf-8") as file:
         config.write(file)
 

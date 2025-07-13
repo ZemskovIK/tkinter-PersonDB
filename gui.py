@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import messagebox, simpledialog, filedialog
 import dialogs, settings, database, sqlite3
+from typing import Optional
 
 DEFAULT_PHOTO_PATH = "./images/noimage.png"
 DB_NAME = 'AmDB.db'
@@ -22,10 +23,10 @@ gui_components = {
 def init_default_photo():
     app_state['default_photo'] = PhotoImage(file=DEFAULT_PHOTO_PATH).subsample(IMAGE_SUBSAMPLE)
 
-def get_current_username():
+def get_current_username() -> Optional[str]:
     return app_state['current_username']
 
-def change_user():
+def change_user() -> None:
     new_name = settings.get_username(app_state['current_username'])
     if new_name:
         app_state['current_username'] = new_name
@@ -33,7 +34,7 @@ def change_user():
         settings.save_settings(new_name)
         messagebox.showinfo("Успешно", f"Имя пользователя изменено на {new_name}")
 
-def refresh_persons_list():
+def refresh_persons_list() -> None:
     app_state['persons'] = database.get_all_persons()
     listbox = gui_components['listbox']
     listbox.delete(0, END)
@@ -41,7 +42,7 @@ def refresh_persons_list():
     for person in app_state['persons']:
         listbox.insert(END, person[1])
 
-def find_person():
+def find_person() -> None:
     query = simpledialog.askstring("Поиск", "Введите имя для поиска:")
     if not query:
         return
@@ -58,7 +59,7 @@ def find_person():
     
     messagebox.showinfo("Поиск", "Ничего не найдено")
 
-def add_person(root, event=None):
+def add_person(root: Tk, event=None) -> None:
     name = simpledialog.askstring("Добавить", "Введите имя:", parent=root)
     if not name:
         get_listbox().focus_set()
@@ -87,7 +88,7 @@ def add_person(root, event=None):
     messagebox.showinfo("Успешно", "Запись добавлена")
     get_listbox().focus_set()
 
-def delete_person(event=None):
+def delete_person(event=None) -> None:
     listbox = gui_components['listbox']
     sel = listbox.curselection()
     
@@ -107,7 +108,7 @@ def delete_person(event=None):
         refresh_persons_list()
         messagebox.showinfo("Успешно", "Запись удалена")
 
-def edit_person(root, event=None):
+def edit_person(root: Tk, event=None) -> None:
     listbox = gui_components['listbox']
     sel = listbox.curselection()
     
@@ -145,7 +146,7 @@ def edit_person(root, event=None):
     messagebox.showinfo("Успешно", "Запись изменена")
     get_listbox().focus_set()
 
-def create_gui(root, username):
+def create_gui(root: Tk, username: str) -> None:
     app_state['current_username'] = username
     init_default_photo()
     
@@ -191,15 +192,15 @@ def create_gui(root, username):
 
     refresh_persons_list()
     
-    def clean_bio(text):
+    def clean_bio(text: str) -> str:
         return ' '.join(line.strip() for line in text.split('\n'))
     
-    def open_menu(event=None):
+    def open_menu(event=None) -> None:
         x = root.winfo_rootx()
         y = root.winfo_rooty()
         fond_menu.tk_popup(x, y)
 
-    def on_select(event=None):
+    def on_select(event=None) -> None:
         listbox = gui_components['listbox']
         sel = listbox.curselection()
         
@@ -226,5 +227,5 @@ def create_gui(root, username):
     gui_components['listbox'].bind("<<ListboxSelect>>", on_select)
     root.bind("<F10>", open_menu)
     
-def get_listbox():
+def get_listbox() -> Listbox:
     return gui_components['listbox']

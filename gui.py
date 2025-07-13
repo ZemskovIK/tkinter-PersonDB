@@ -83,7 +83,7 @@ def add_person(root: Tk, event=None) -> None:
     img_data = load_image(filepath) if filepath else None
     
     try:
-        with sqlite3.connect('AmDB.db') as connection:
+        with sqlite3.connect(DB_NAME) as connection:
             cursor = connection.cursor()
             if img_data:
                 cursor.execute('INSERT INTO persons (name, bio, photo) VALUES (?, ?, ?)', 
@@ -107,17 +107,23 @@ def delete_person(event=None) -> None:
         messagebox.showwarning("Ошибка", "Выберите запись для удаления")
         get_listbox().focus_set()
         return
-    
+        
     index = sel[0]
     person = app_state['persons'][index]
     
-    if messagebox.askyesno("Подтверждение", f"Удалить '{person[1]}'?"):
-        with sqlite3.connect('AmDB.db') as connection:
+    if not messagebox.askyesno("Подтверждение", f"Удалить '{person[1]}'?"):
+        return
+    
+    try:
+        with sqlite3.connect(DB_NAME) as connection:
             cursor = connection.cursor()
             cursor.execute('DELETE FROM persons WHERE id = ?', (person[0],))
-            
-        refresh_persons_list()
-        messagebox.showinfo("Успешно", "Запись удалена")
+    except sqlite3.Error as e:
+        messagebox.showerror("Ошибка БД", f"Ошибка при удалении записи: {e}")
+        return
+    
+    refresh_persons_list()
+    messagebox.showinfo("Успешно", "Запись удалена")
 
 def edit_person(root: Tk, event=None) -> None:
     listbox = gui_components['listbox']
@@ -144,7 +150,7 @@ def edit_person(root: Tk, event=None) -> None:
     new_photo = load_image(filepath) if filepath else None
     
     try:
-        with sqlite3.connect('AmDB.db') as connection:
+        with sqlite3.connect(DB_NAME) as connection:
             cursor = connection.cursor()
             if new_photo:
                 cursor.execute('''UPDATE persons SET name = ?, bio = ?, photo = ? 

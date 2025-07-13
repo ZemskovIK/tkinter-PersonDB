@@ -2,45 +2,61 @@ from tkinter import *
 from tkinter import messagebox, simpledialog, filedialog
 import dialogs, settings, database, sqlite3
 
-user_label = None
-current_username = None
-photo_label = None
-bio_text = None
-listbox = None
-persons = []
+DEFAULT_PHOTO_PATH = "./images/noimage.png"
+DB_NAME = 'AmDB.db'
+IMAGE_SUBSAMPLE = 2
+
+app_state = {
+    'current_username': None,
+    'persons': [],
+    'default_photo': None
+}
+
+gui_components = {
+    'user_label': None,
+    'photo_label': None,
+    'bio_text': None,
+    'listbox': None
+}
+
+def init_default_photo():
+    app_state['default_photo'] = PhotoImage(file=DEFAULT_PHOTO_PATH).subsample(IMAGE_SUBSAMPLE)
 
 def get_current_username():
-    global current_username
-    return current_username
+    return app_state['current_username']
 
 def change_user():
-    global current_username, user_label
-    new_name = settings.get_username(current_username)
+    new_name = settings.get_username(app_state['current_username'])
     if new_name:
-        current_username = new_name
-        user_label.config(text=f"Пользователь: {new_name}")
+        app_state['current_username'] = new_name
+        gui_components['user_label'].config(text=f"Пользователь: {new_name}")
         settings.save_settings(new_name)
         messagebox.showinfo("Успешно", f"Имя пользователя изменено на {new_name}")
 
 def refresh_persons_list():
-    global persons, listbox
-    persons = database.get_all_persons()
+    app_state['persons'] = database.get_all_persons()
+    listbox = gui_components['listbox']
     listbox.delete(0, END)
-    for p in persons:
-        listbox.insert(END, p[1])
+    
+    for person in app_state['persons']:
+        listbox.insert(END, person[1])
 
 def find_person():
     query = simpledialog.askstring("Поиск", "Введите имя для поиска:")
-    if query:
-        for i, person in enumerate(persons):
-            if query.lower() in person[1].lower():
-                listbox.selection_clear(0, END)
-                listbox.selection_set(i)
-                listbox.see(i)
-                listbox.event_generate("<<ListboxSelect>>")
-                break
-        else:
-            messagebox.showinfo("Поиск", "Ничего не найдено")
+    if not query:
+        return
+        
+    listbox = gui_components['listbox']
+    
+    for i, person in enumerate(app_state['persons']):
+        if query.lower() in person[1].lower():
+            listbox.selection_clear(0, END)
+            listbox.selection_set(i)
+            listbox.see(i)
+            listbox.event_generate("<<ListboxSelect>>")
+            return
+    
+    messagebox.showinfo("Поиск", "Ничего не найдено")
 
 def add_person(root, event=None):
     name = simpledialog.askstring("Добавить", "Введите имя:", parent=root)
@@ -72,28 +88,36 @@ def add_person(root, event=None):
     get_listbox().focus_set()
 
 def delete_person(event=None):
+    listbox = gui_components['listbox']
     sel = listbox.curselection()
+    
     if not sel:
         messagebox.showwarning("Ошибка", "Выберите запись для удаления")
         get_listbox().focus_set()
         return
+    
     index = sel[0]
-    person = persons[index]
+    person = app_state['persons'][index]
+    
     if messagebox.askyesno("Подтверждение", f"Удалить '{person[1]}'?"):
         with sqlite3.connect('AmDB.db') as connection:
             cursor = connection.cursor()
             cursor.execute('DELETE FROM persons WHERE id = ?', (person[0],))
+            
         refresh_persons_list()
         messagebox.showinfo("Успешно", "Запись удалена")
 
 def edit_person(root, event=None):
+    listbox = gui_components['listbox']
     sel = listbox.curselection()
+    
     if not sel:
         messagebox.showwarning("Ошибка", "Выберите запись для изменения")
         get_listbox().focus_set()
         return
+    
     index = sel[0]
-    person = persons[index]
+    person = app_state['persons'][index]
     
     new_name = simpledialog.askstring("Изменить", "Введите новое имя:", initialvalue=person[1], parent=root)
     if new_name is None:
@@ -116,22 +140,20 @@ def edit_person(root, event=None):
         else:
             cursor.execute('UPDATE persons SET name = ?, bio = ? WHERE id = ?', 
                           (new_name, new_bio, person[0]))
+
     refresh_persons_list()
     messagebox.showinfo("Успешно", "Запись изменена")
     get_listbox().focus_set()
 
 def create_gui(root, username):
-    global photo_label, bio_text, listbox
-    global user_label, current_username, persons
-    
-    current_username = username
-    default_photo = PhotoImage(file="./images/noimage.png").subsample(2)
+    app_state['current_username'] = username
+    init_default_photo()
     
     statusbar = Frame(root, bd=1, relief=SUNKEN)
     statusbar.pack(side=BOTTOM, fill=X)
     
-    user_label = Label(statusbar, text=f"Пользователь: {username}")
-    user_label.pack(side=RIGHT, padx=10)
+    gui_components['user_label'] = Label(statusbar, text=f"Пользователь: {username}")
+    gui_components['user_label'].pack(side=RIGHT, padx=10)
     
     info_label = Label(statusbar, 
                        text= "F1-справка F2-добавить F3-удалить F4-изменить F10-меню")
@@ -157,16 +179,15 @@ def create_gui(root, username):
 
     root.config(menu=main_menu)
 
-    listbox = Listbox(root, width=30)
-    listbox.pack(side=LEFT, fill=Y, padx=[5, 0], pady=5)
+    gui_components['listbox'] = Listbox(root, width=30)
+    gui_components['listbox'].pack(side=LEFT, fill=Y, padx=[5, 0], pady=5)
 
-    photo_label = Label(root, width=600, bg="grey")
-    photo_label.pack(side=LEFT, fill=Y, padx=5, pady=5)
-    photo_label.default_image = default_photo
+    gui_components['photo_label'] = Label(root, width=600, bg="grey")
+    gui_components['photo_label'].pack(side=LEFT, fill=Y, padx=5, pady=5)
+    gui_components['photo_label'].default_image = app_state['default_photo']
 
-
-    bio_text = Text(root, wrap=WORD, width=50)
-    bio_text.pack(side=LEFT, fill=BOTH, expand=True, padx=[0, 5], pady=5)
+    gui_components['bio_text'] = Text(root, wrap=WORD, width=50)
+    gui_components['bio_text'].pack(side=LEFT, fill=BOTH, expand=True, padx=[0, 5], pady=5)
 
     refresh_persons_list()
     
@@ -179,10 +200,15 @@ def create_gui(root, username):
         fond_menu.tk_popup(x, y)
 
     def on_select(event=None):
+        listbox = gui_components['listbox']
         sel = listbox.curselection()
+        
         if not sel:
             return
-        person = persons[sel[0]]
+        
+        person = app_state['persons'][sel[0]]
+        bio_text = gui_components['bio_text']
+        photo_label = gui_components['photo_label']
         
         bio_text.delete(1.0, END)
         bio_text.insert(END, clean_bio(person[2]))
@@ -197,8 +223,8 @@ def create_gui(root, username):
         else:
             photo_label.config(image=photo_label.default_image)
 
-    listbox.bind("<<ListboxSelect>>", on_select)
+    gui_components['listbox'].bind("<<ListboxSelect>>", on_select)
     root.bind("<F10>", open_menu)
     
 def get_listbox():
-    return listbox
+    return gui_components['listbox']

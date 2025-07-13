@@ -250,12 +250,12 @@ def create_gui(root: Tk, username: str) -> None:
 
     gui_components['photo_label'] = Label(root, width=600, bg="grey")
     gui_components['photo_label'].pack(side=LEFT, fill=Y, padx=5, pady=5)
-    gui_components['photo_label'].default_image = app_state['default_photo']
+    gui_components['photo_label'].image = app_state['default_photo']
 
     gui_components['bio_text'] = Text(root, wrap=WORD, width=50)
     gui_components['bio_text'].pack(side=LEFT, fill=BOTH, expand=True, padx=[0, 5], pady=5)
 
     gui_components['listbox'].bind("<<ListboxSelect>>", on_select)
     root.bind("<F10>", open_menu)
-    
+
     refresh_persons_list()

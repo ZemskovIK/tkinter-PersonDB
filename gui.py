@@ -64,30 +64,36 @@ def find_person() -> None:
 def clean_bio_text(text: str) -> str:
     return ' '.join(line.strip() for line in text.split('\n'))
 
+def load_image(filepath: str) -> Optional[bytes]:
+    try:
+        with open(filepath, 'rb') as file:
+            return file.read()
+    except Exception as e:
+        messagebox.showerror("Ошибка", f"Не удалось загрузить фото: {e}")
+        return None
+
 def add_person(root: Tk, event=None) -> None:
     name = simpledialog.askstring("Добавить", "Введите имя:", parent=root)
     if not name:
         get_listbox().focus_set()
         return 
-    bio = simpledialog.askstring("Добавить", "Введите биографию:", parent=root)
-    bio = bio if bio else ""
+        
+    bio = simpledialog.askstring("Добавить", "Введите биографию:", parent=root) or ""
     filepath = filedialog.askopenfilename(filetypes=[("PNG Image", "*.png")])
-    img = None
-    if filepath:
-        try:
-            with open(filepath, 'rb') as file:
-                img = file.read()
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось загрузить фото: {e}")
-            return
-    with sqlite3.connect('AmDB.db') as connection:
-        cursor = connection.cursor()
-        if img:
-            cursor.execute('INSERT INTO persons (name, bio, photo) VALUES (?, ?, ?)', 
-                          (name, bio, img))
-        else:
-            cursor.execute('INSERT INTO persons (name, bio) VALUES (?, ?)', 
-                          (name, bio))
+    img_data = load_image(filepath) if filepath else None
+    
+    try:
+        with sqlite3.connect('AmDB.db') as connection:
+            cursor = connection.cursor()
+            if img_data:
+                cursor.execute('INSERT INTO persons (name, bio, photo) VALUES (?, ?, ?)', 
+                            (name, bio, img_data))
+            else:
+                cursor.execute('INSERT INTO persons (name, bio) VALUES (?, ?)', 
+                            (name, bio))
+    except sqlite3.Error as e:
+        messagebox.showerror("Ошибка БД", f"Ошибка при добавлении записи: {e}")
+        return
     
     refresh_persons_list()
     messagebox.showinfo("Успешно", "Запись добавлена")
@@ -121,32 +127,35 @@ def edit_person(root: Tk, event=None) -> None:
         messagebox.showwarning("Ошибка", "Выберите запись для изменения")
         get_listbox().focus_set()
         return
-    
+        
     index = sel[0]
     person = app_state['persons'][index]
     
-    new_name = simpledialog.askstring("Изменить", "Введите новое имя:", initialvalue=person[1], parent=root)
+    new_name = simpledialog.askstring("Изменить", "Введите новое имя:", 
+                                    initialvalue=person[1], parent=root)
     if new_name is None:
         get_listbox().focus_set()
         return
     
-    new_bio = simpledialog.askstring("Изменить", "Введите новую биографию:", initialvalue=person[2], parent=root)
-    new_bio = new_bio if new_bio is not None else person[2]
-    filepath = filedialog.askopenfilename(filetypes=[("PNG Image", "*.png")])
-    new_photo = None
-    if filepath:
-        with open(filepath, 'rb') as file:
-            new_photo = file.read()
+    new_bio = simpledialog.askstring("Изменить", "Введите новую биографию:", 
+                                    initialvalue=person[2], parent=root) or person[2]
     
-    with sqlite3.connect('AmDB.db') as connection:
-        cursor = connection.cursor()
-        if new_photo:
-            cursor.execute('UPDATE persons SET name = ?, bio = ?, photo = ? WHERE id = ?', 
-                          (new_name, new_bio, new_photo, person[0]))
-        else:
-            cursor.execute('UPDATE persons SET name = ?, bio = ? WHERE id = ?', 
-                          (new_name, new_bio, person[0]))
-
+    filepath = filedialog.askopenfilename(filetypes=[("PNG Image", "*.png")])
+    new_photo = load_image(filepath) if filepath else None
+    
+    try:
+        with sqlite3.connect('AmDB.db') as connection:
+            cursor = connection.cursor()
+            if new_photo:
+                cursor.execute('''UPDATE persons SET name = ?, bio = ?, photo = ? 
+                              WHERE id = ?''', (new_name, new_bio, new_photo, person[0]))
+            else:
+                cursor.execute('''UPDATE persons SET name = ?, bio = ? 
+                              WHERE id = ?''', (new_name, new_bio, person[0]))
+    except sqlite3.Error as e:
+        messagebox.showerror("Ошибка БД", f"Ошибка при изменении записи: {e}")
+        return
+    
     refresh_persons_list()
     messagebox.showinfo("Успешно", "Запись изменена")
     get_listbox().focus_set()

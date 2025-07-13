@@ -1,7 +1,8 @@
 from tkinter import Tk, messagebox
+from typing import Optional
 import settings, database, data, gui, dialogs
 
-def on_close(event=None):
+def on_close(event: Optional[object] = None) -> None:
     global username
     username = gui.get_current_username()
     settings.save_settings(username, root.winfo_x(),
@@ -32,8 +33,8 @@ root.geometry(f"{width}x{height}+{x}+{y}")
 root.iconbitmap(default="./icon.ico")
 root.protocol("WM_DELETE_WINDOW", on_close)
 
-counter = 0
-def show_welcome(event=None):
+counter: int = 0
+def show_welcome(event: Optional[object] = None) -> None:
     global counter
     global root
     if counter == 0:

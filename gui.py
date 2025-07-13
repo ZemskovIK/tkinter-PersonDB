@@ -17,7 +17,9 @@ gui_components = {
     'user_label': None,
     'photo_label': None,
     'bio_text': None,
-    'listbox': None
+    'listbox': None,
+    'main_menu': None,
+    'fond_menu': None
 }
 
 def init_default_photo():
@@ -58,6 +60,9 @@ def find_person() -> None:
             return
     
     messagebox.showinfo("Поиск", "Ничего не найдено")
+
+def clean_bio_text(text: str) -> str:
+    return ' '.join(line.strip() for line in text.split('\n'))
 
 def add_person(root: Tk, event=None) -> None:
     name = simpledialog.askstring("Добавить", "Введите имя:", parent=root)
@@ -146,39 +151,84 @@ def edit_person(root: Tk, event=None) -> None:
     messagebox.showinfo("Успешно", "Запись изменена")
     get_listbox().focus_set()
 
+def on_select(event=None) -> None:
+    listbox = gui_components['listbox']
+    sel = listbox.curselection()
+    
+    if not sel:
+        return
+        
+    person = app_state['persons'][sel[0]]
+    bio_text = gui_components['bio_text']
+    photo_label = gui_components['photo_label']
+    
+    bio_text.delete(1.0, END)
+    bio_text.insert(END, clean_bio_text(person[2]))
+
+    if person[3]:
+        try:
+            photo_image = PhotoImage(data=person[3]).subsample(IMAGE_SUBSAMPLE)
+            photo_label.image = photo_image
+            photo_label.config(image=photo_image)
+        except Exception as e:
+            print(f"Ошибка загрузки изображения: {e}")
+            photo_label.config(image=app_state['default_photo'])
+    else:
+        photo_label.config(image=app_state['default_photo'])
+
+def open_menu(event=None) -> None:
+    root = gui_components['listbox'].master
+    x = root.winfo_rootx()
+    y = root.winfo_rooty()
+    gui_components['fond_menu'].tk_popup(x, y)
+
+def get_listbox() -> Listbox:
+    return gui_components['listbox']
+
+def create_statusbar(root: Tk) -> None:
+    statusbar = Frame(root, bd=1, relief=SUNKEN)
+    statusbar.pack(side=BOTTOM, fill=X)
+    
+    gui_components['user_label'] = Label(statusbar, 
+                                      text=f"Пользователь: {app_state['current_username']}")
+    gui_components['user_label'].pack(side=RIGHT, padx=10)
+    
+    info_label = Label(statusbar, 
+                     text="F1-справка F2-добавить F3-удалить F4-изменить F10-меню")
+    info_label.pack(side=LEFT, padx=10)
+
+def create_main_menu(root: Tk) -> None:
+    main_menu = Menu(root)
+    fond_menu = Menu(main_menu, tearoff=0)
+    
+    fond_menu.add_command(label="Найти", command=find_person)
+    fond_menu.add_command(label="Сменить пользователя", command=change_user)
+    fond_menu.add_separator()
+    fond_menu.add_command(label="Добавить", accelerator="F2", 
+                        command=lambda: add_person(root))
+    fond_menu.add_command(label="Удалить", accelerator="F3", command=delete_person)
+    fond_menu.add_command(label="Изменить", accelerator="F4", 
+                        command=lambda: edit_person(root))
+    fond_menu.add_separator()
+    fond_menu.add_command(label="Выход", accelerator="Ctrl+X", command=root.quit)
+    
+    help_menu = Menu(main_menu, tearoff=0)
+    help_menu.add_command(label="Содержание", command=dialogs.show_help)
+    help_menu.add_command(label="О программе", command=dialogs.show_about)
+    
+    main_menu.add_cascade(label="Фонд", menu=fond_menu)
+    main_menu.add_cascade(label="Справка", menu=help_menu)
+    
+    gui_components['main_menu'] = main_menu
+    gui_components['fond_menu'] = fond_menu
+    root.config(menu=main_menu)
+
 def create_gui(root: Tk, username: str) -> None:
     app_state['current_username'] = username
     init_default_photo()
     
-    statusbar = Frame(root, bd=1, relief=SUNKEN)
-    statusbar.pack(side=BOTTOM, fill=X)
-    
-    gui_components['user_label'] = Label(statusbar, text=f"Пользователь: {username}")
-    gui_components['user_label'].pack(side=RIGHT, padx=10)
-    
-    info_label = Label(statusbar, 
-                       text= "F1-справка F2-добавить F3-удалить F4-изменить F10-меню")
-    info_label.pack(side=LEFT, padx=10)
-
-    main_menu = Menu(root)
-    fond_menu = Menu(main_menu, tearoff=0)
-    fond_menu.add_command(label="Найти", command=find_person)
-    fond_menu.add_command(label="Сменить пользователя",
-                          command=change_user)
-    fond_menu.add_separator()
-    fond_menu.add_command(label="Добавить", accelerator="F2", command=lambda: add_person(root))
-    fond_menu.add_command(label="Удалить", accelerator="F3", command=delete_person)
-    fond_menu.add_command(label="Изменить", accelerator="F4", command=lambda: edit_person(root))
-    fond_menu.add_separator()
-    fond_menu.add_command(label="Выход", accelerator="Ctrl+X", command=root.quit)
-    main_menu.add_cascade(label="Фонд", menu=fond_menu)
-
-    help_menu = Menu(main_menu, tearoff=0)
-    help_menu.add_command(label="Содержание", command=dialogs.show_help)
-    help_menu.add_command(label="О программе", command=dialogs.show_about)
-    main_menu.add_cascade(label="Справка", menu=help_menu)
-
-    root.config(menu=main_menu)
+    create_statusbar(root)
+    create_main_menu(root)
 
     gui_components['listbox'] = Listbox(root, width=30)
     gui_components['listbox'].pack(side=LEFT, fill=Y, padx=[5, 0], pady=5)
@@ -190,42 +240,7 @@ def create_gui(root: Tk, username: str) -> None:
     gui_components['bio_text'] = Text(root, wrap=WORD, width=50)
     gui_components['bio_text'].pack(side=LEFT, fill=BOTH, expand=True, padx=[0, 5], pady=5)
 
-    refresh_persons_list()
-    
-    def clean_bio(text: str) -> str:
-        return ' '.join(line.strip() for line in text.split('\n'))
-    
-    def open_menu(event=None) -> None:
-        x = root.winfo_rootx()
-        y = root.winfo_rooty()
-        fond_menu.tk_popup(x, y)
-
-    def on_select(event=None) -> None:
-        listbox = gui_components['listbox']
-        sel = listbox.curselection()
-        
-        if not sel:
-            return
-        
-        person = app_state['persons'][sel[0]]
-        bio_text = gui_components['bio_text']
-        photo_label = gui_components['photo_label']
-        
-        bio_text.delete(1.0, END)
-        bio_text.insert(END, clean_bio(person[2]))
-
-        if person[3]:
-            try:
-                photo_label.image = PhotoImage(data=person[3]).subsample(2)
-                photo_label.config(image=photo_label.image)
-            except Exception as e:
-                print(f"Ошибка загрузки изображения: {e}")
-                photo_label.config(image=photo_label.default_image)
-        else:
-            photo_label.config(image=photo_label.default_image)
-
     gui_components['listbox'].bind("<<ListboxSelect>>", on_select)
     root.bind("<F10>", open_menu)
     
-def get_listbox() -> Listbox:
-    return gui_components['listbox']
+    refresh_persons_list()

@@ -1,12 +1,13 @@
 from tkinter import messagebox
+from typing import Optional
 
-def show_about(event=None):
+def show_about(event: Optional[object] = None) -> None:
     messagebox.showinfo("О программе",
         "База данных 'Известные исторические личности России'\n"
         "(с) Zemskov I.K., Russia, 2025\n"
         "\nС любовью и уважением родителям:\nКириллу Валентиновичу и Маргарите Геннадиевне")
 
-def show_help(event=None):
+def show_help(event: Optional[object] = None) -> None:
     messagebox.showinfo("Справка",
         "База данных 'Известные исторические личности России'\n\n"
         "Основные функции:\n"
